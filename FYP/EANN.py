@@ -142,19 +142,19 @@ def eval_genomes(genomes, config):
             n_circuit_tmp = i
         valid_error = eval(n_hidden_node_tmp, n_circuit_tmp)
         genome.fitness -= min(valid_error) * 100
-
+        # print('Old: {}\tNew: {}\tSignals: {} {} {} {} {} {}'
+        #       .format(n_hidden_node, n_hidden_node_tmp, layer_action, layer_position, node_action,
+        #               node_number, node_position, circuit_action))
         if best_fitness < genome.fitness:
             best_decision = [layer_action, layer_position, node_action, node_number, node_position, circuit_action]
             best_fitness = genome.fitness
             best_hidden_node = list(n_hidden_node_tmp)
             best_circuit = n_circuit_tmp
-    print('Old: {}'.format(n_hidden_node))
-    print('\n===================SET OF SIGNALS [L] [Lpo] [N] [Nnum] [Npo] [C]: {}'
-          .format(best_decision))
-    print('New topology: {}\tNumber of circuit: {}'.format(n_hidden_node_tmp, n_circuit_tmp))
-    print('Best fitness of this generation: {}%'.format(genome.fitness))
     n_hidden_node = list(best_hidden_node)
     n_circuit = best_circuit
+    print('\n===================SET OF SIGNALS [L] [Lpo] [N] [Nnum] [Npo] [C]: {}'
+          .format(best_decision))
+    print('New topology: {}\tNumber of circuit: {}'.format(best_hidden_node, best_circuit))
 
 
 def display(winner, config):
