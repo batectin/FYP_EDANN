@@ -17,18 +17,27 @@ import visualize
 from FYP.model import evaluate
 
 # Parameters for target ANN.
-dataset = 'car.data'
-n_in = 6
+
+dataset = 'breastcancer.data'
+n_in = 4
 n_circuit = 1
-n_hidden_node = [9, 8]
-n_out = 4
+n_hidden_node = [8, 3, 4]
+n_out = 3
+
+//dataset = 'car.data'
+//n_in = 6
+//n_circuit = 1
+//n_hidden_node = [9, 8]
+//n_out = 4
+
 drop_type = 3
 n_epochs = 200
 sparsity = 3
 varied_coef = 1
 learning_rate = 0.01
 momentum = 0.4
-batch_size = 100
+batch_size = 27
+
 probability = [0.1,
                0.2,
                0.3,
@@ -79,6 +88,7 @@ def eval_genomes(genomes, config):
         circuit_action = ceil(output[5] * 3) - 2
         if circuit_action == -2: circuit_action = -1
         node_number = ceil(output[3] * max_added_node)
+        if node_number == 0: node_number = 1
         layer_position = ceil(output[1] * len(n_hidden_node)) - 1
         if layer_position == -1: layer_position = 0
 
@@ -90,7 +100,8 @@ def eval_genomes(genomes, config):
         elif layer_action == 1:  # increase 1 layer
             n_hidden_node_tmp.insert(layer_position, n_hidden_unit)
 
-        node_position = ceil(output[4] * len(n_hidden_node_tmp)) - 1
+
+        node_position = ceil(output[4] * len(n_hidden_node_tmp)) - 1    # decide which layer after the layer action
         if node_position == -1: node_position = 0
 
         if node_action == -1:
@@ -117,6 +128,7 @@ def eval_genomes(genomes, config):
             n_circuit_tmp = i
         valid_error = eval(n_hidden_node_tmp, n_circuit_tmp)
         genome.fitness -= min(valid_error) * 100
+
         print('Old: {}\tNew: {} cir {}\t\t\t\tSignals: {} {} {} {} {} {}\t\tFitness: {}'
               .format(n_hidden_node, n_hidden_node_tmp, n_circuit_tmp, layer_action, layer_position, node_action,
                       node_number, node_position, circuit_action, genome.fitness))
@@ -130,6 +142,11 @@ def eval_genomes(genomes, config):
     print('\n===================SET OF SIGNALS [L] [Lpo] [N] [Nnum] [Npo] [C]: {}'
           .format(best_decision))
     print('New topology: {}\tNumber of circuit: {}'.format(best_hidden_node, best_circuit))
+    f = open('Result_breastcancer.txt', 'a')
+    f.write('\n===================SET OF SIGNALS [L] [Lpo] [N] [Nnum] [Npo] [C]: {}\n'
+            .format(best_decision))
+    f.write('New topology: {}\tNumber of circuit: {}\n'.format(best_hidden_node, best_circuit))
+    f.write('Fitness: {}\n'.format(best_fitness))
 
     f = open('Result_car.txt', 'a')
     f.write('\n===================SET OF SIGNALS [L] [Lpo] [N] [Nnum] [Npo] [C]: {}\n'
@@ -154,6 +171,7 @@ def display(winner, config):
 
 def run(config_file):
     start_time = timeit.default_timer()
+    open('Result_breastcancer.txt', 'w')
     print('Initial topology: {}\tNumber of circuit: {}'.format(n_hidden_node, n_circuit))
     # Load configuration.
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
@@ -168,6 +186,7 @@ def run(config_file):
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
     p.add_reporter(neat.Checkpointer(5))
+
 
     # Run for up to 300 generations.
     winner = p.run(eval_genomes, 100)
@@ -186,25 +205,30 @@ def run(config_file):
 
 
 def cont(config_file):
+    start_time = timeit.default_timer()
+    # open('Result_breastcancer.txt', 'w')
+    print('Initial topology: {}\tNumber of circuit: {}'.format(n_hidden_node, n_circuit))
     # Load configuration.
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                          neat.DefaultSpeciesSet, neat.DefaultStagnation,
                          config_file)
-    p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-41')
+
+    p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-59')
     p.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
     p.add_reporter(neat.Checkpointer(5))
     winner = p.run(eval_genomes, 10)
 
+
     # Save the model the pickle file
     joblib.dump(winner, "EANN_model.pkl")
-
-    display(winner, config)
     visualize.draw_net(config, winner, True)
     visualize.plot_stats(stats, ylog=False, view=True)
     visualize.plot_species(stats, view=True)
 
+    end_time = timeit.default_timer()
+    print('The code for file EANN.py ran for {:8.1f}hour(s)'.format((end_time - start_time)/3600), file=sys.stderr)
 
 def load(config_file):
     initial_topology = [8, 10]
@@ -270,6 +294,7 @@ if __name__ == '__main__':
     # current working directory.
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, 'config-MLP')
-    load(config_path)
+    cont(config_path)
+
     # cont(config_path)
     # eval([8,10], 4)
