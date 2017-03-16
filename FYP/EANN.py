@@ -66,6 +66,8 @@ def eval_genomes(genomes, config):
         xi = tuple(valid_error) + (len(n_hidden_node),) + (sum(n_hidden_node),) + (n_circuit,)
         output = net.activate(xi)
 
+        # Analyze developmental signals and make changes on target ANN
+
         layer_action = ceil(output[0] * 3) - 2
         if layer_action == -2: layer_action = -1
         node_action = ceil(output[2] * 3) - 2
@@ -194,7 +196,6 @@ def cont(config_file):
 
     # Save the model the pickle file
     joblib.dump(winner, "EANN_model.pkl")
-
     visualize.draw_net(config, winner, True)
     visualize.plot_stats(stats, ylog=False, view=True)
     visualize.plot_species(stats, view=True)
@@ -263,7 +264,6 @@ if __name__ == '__main__':
     # current working directory.
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, 'config-MLP')
-    # run(config_path)
     cont(config_path)
     # valid1 = 0
     # valid2 = 0
