@@ -91,7 +91,7 @@ def eval_genomes(genomes, config):
         if node_position == -1: node_position = 0
 
         if node_action == -1:
-            if n_hidden_node_tmp[node_position] - node_number > 0:  # decrease X node(s) at layer L
+            if (n_hidden_node_tmp[node_position] - node_number) > 0:  # decrease X node(s) at layer L
                 n_hidden_node_tmp[node_position] -= node_number
             else:
                 genome.fitness -= 20  # "punish" if this action is decided on a 1-layer NN
@@ -105,6 +105,7 @@ def eval_genomes(genomes, config):
                 genome.fitness -= 10  # "punish" if the current number of circuit is 1
         elif circuit_action == 1:
             if n_circuit_tmp + 1 <= n_hidden_node_tmp[-1]: n_circuit_tmp += 1
+        if n_circuit_tmp > n_hidden_node_tmp[-1]: n_circuit_tmp = n_hidden_node_tmp[-1]
 
         stretch_error = 0
         for i in range(n_stretch):
@@ -126,7 +127,7 @@ def eval_genomes(genomes, config):
           .format(best_decision))
     print('New topology: {}\tNumber of circuit: {}'.format(best_hidden_node, best_circuit))
     f = open('Result_breastcancer.txt', 'a')
-    f.write('{} {} {} {}'.format(len(best_hidden_node), sum(best_hidden_node), best_circuit, best_fitness*100))
+    f.write('{} {} {} {}\n'.format(len(best_hidden_node), sum(best_hidden_node), best_circuit, best_fitness*100))
 
     g = open('Result_for_visualize.txt', 'a')
     g.write('{}\n'.format(best_fitness*100))
@@ -187,7 +188,7 @@ def cont(config_file):
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                          neat.DefaultSpeciesSet, neat.DefaultStagnation,
                          config_file)
-    p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-1148')
+    p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-1151')
     p.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
