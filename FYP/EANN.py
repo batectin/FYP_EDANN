@@ -17,18 +17,18 @@ import visualize
 from FYP.model import evaluate
 
 # Parameters for target ANN.
-dataset = 'breastcancer.data'
-n_in = 9
+dataset = 'car.data'
+n_in = 6
 n_circuit = 1
 n_hidden_node = [4, 5, 6]
-n_out = 2
+n_out = 4
 drop_type = 3
-n_epochs = 50
+n_epochs = 100
 sparsity = 3
 varied_coef = 1
 learning_rate = 0.01
 momentum = 0.4
-batch_size = 27
+batch_size = 100
 probability = [0.1,
                0.2,
                0.3,
@@ -125,7 +125,7 @@ def eval_genomes(genomes, config):
     print('\n===================SET OF SIGNALS [L] [Lpo] [N] [Nnum] [Npo] [C]: {}'
           .format(best_decision))
     print('New topology: {}\tNumber of circuit: {}'.format(best_hidden_node, best_circuit))
-    f = open('Result_breastcancer.txt', 'a')
+    f = open('Result_car.txt', 'a')
     f.write('{} {} {} {}'.format(len(best_hidden_node), sum(best_hidden_node), best_circuit, best_fitness*100))
 
     g = open('Result_for_visualize.txt', 'a')
@@ -187,7 +187,7 @@ def cont(config_file):
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                          neat.DefaultSpeciesSet, neat.DefaultStagnation,
                          config_file)
-    p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-1148')
+    p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-361')
     p.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
