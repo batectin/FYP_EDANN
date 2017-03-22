@@ -5,6 +5,7 @@
 from __future__ import print_function
 
 import os
+import random
 import timeit
 
 import neat
@@ -20,10 +21,10 @@ from FYP.model import evaluate
 dataset = 'breastcancer.data'
 n_in = 9
 n_circuit = 1
-n_hidden_node = [4, 5, 6]
+n_hidden_node = []
 n_out = 2
 drop_type = 3
-n_epochs = 50
+n_epochs = 100
 sparsity = 3
 varied_coef = 1
 learning_rate = 0.01
@@ -40,9 +41,15 @@ probability = [0.1,
                0.9]
 
 # Parameters for developmental ANN
-n_hidden_unit = 2 * n_in // 3 + n_out
-max_added_node = 5
-n_stretch = 3
+n_hidden_unit = 2 * (n_in + n_out) // 3
+max_added_node = 3
+n_stretch = 2
+n_target_ANN = 5
+threshold_layer = 4
+threshold_node_upper = 15
+threshold_node_lower = 3
+threshold_circuit = 3
+
 
 def eval(hidden_unit, hidden_circuit):
     return evaluate(n_hidden_node=hidden_unit, n_circuit=hidden_circuit,
@@ -56,81 +63,99 @@ def eval(hidden_unit, hidden_circuit):
 def eval_genomes(genomes, config):
     global n_hidden_node
     global n_circuit
-    valid_error = eval(n_hidden_node, n_circuit)
+
+    # Init variables and dependencies
     best_fitness = 0.0
+    for target_index in range(n_target_ANN):
+        n_hidden_node.append([])
+        n_layer = random.randint(1, threshold_layer)
+        for layer in range(n_layer):
+            n_hidden_node[target_index].append(random.randint(threshold_node_lower, threshold_node_upper))
+
+    average_error = 0
     for genome_id, genome in genomes:
-        n_hidden_node_tmp = list(n_hidden_node)
-        n_circuit_tmp = n_circuit
-        genome.fitness = 100.0
-        net = neat.nn.FeedForwardNetwork.create(genome, config)
-        xi = tuple(valid_error) + (len(n_hidden_node),) + (sum(n_hidden_node),) + (n_circuit,)
-        output = net.activate(xi)
+        genome.fitness = 80.0
+        for target_index in range(n_target_ANN):
+            n_hidden_node_tmp = list(n_hidden_node[target_index])
+            n_circuit_tmp = random.randint(1, threshold_circuit)
+            if n_circuit_tmp > min(n_hidden_node_tmp):
+                n_circuit_tmp = min(n_hidden_node_tmp)
 
-        # Analyze developmental signals and make changes on target ANN
+            valid_error = eval(n_hidden_node_tmp, n_circuit_tmp)
+            net = neat.nn.FeedForwardNetwork.create(genome, config)
+            xi = tuple(valid_error) + (len(n_hidden_node_tmp),) + (sum(n_hidden_node_tmp),) + (n_circuit_tmp,)
+            output = net.activate(xi)
 
-        layer_action = ceil(output[0] * 3) - 2
-        if layer_action == -2: layer_action = -1
-        node_action = ceil(output[2] * 3) - 2
-        if node_action == -2: node_action = -1
-        circuit_action = ceil(output[5] * 3) - 2
-        if circuit_action == -2: circuit_action = -1
-        node_number = ceil(output[3] * max_added_node)
-        if node_number == 0: node_number = 1
-        layer_position = ceil(output[1] * len(n_hidden_node)) - 1
-        if layer_position == -1: layer_position = 0
+            # Analyze developmental signals and make changes on target ANN
 
-        if layer_action == -1:
-            if len(n_hidden_node_tmp) > 1:  # decrease 1 layer
-                n_hidden_node_tmp = n_hidden_node[:layer_position] + n_hidden_node[layer_position + 1:]
-            else:
-                genome.fitness -= 10  # "punish" if decrease a layer having less than X nodes
-        elif layer_action == 1:  # increase 1 layer
-            n_hidden_node_tmp.insert(layer_position, n_hidden_unit)
+            layer_action = ceil(output[0] * 3) - 2
+            if layer_action == -2: layer_action = -1
+            node_action = ceil(output[2] * 3) - 2
+            if node_action == -2: node_action = -1
+            circuit_action = ceil(output[5] * 3) - 2
+            if circuit_action == -2: circuit_action = -1
+            node_number = ceil(output[3] * max_added_node)
+            if node_number == 0: node_number = 1
+            layer_position = ceil(output[1] * len(n_hidden_node_tmp)) - 1
+            if layer_position == -1: layer_position = 0
 
-        node_position = ceil(output[4] * len(n_hidden_node_tmp)) - 1  # decide which layer after the layer action
-        if node_position == -1: node_position = 0
+            if layer_action == -1:
+                if len(n_hidden_node_tmp) > 1:  # decrease 1 layer
+                    n_hidden_node_tmp = n_hidden_node[target_index][:layer_position] + \
+                                        n_hidden_node[target_index][layer_position + 1:]
+                    # else:
+                    #     genome.fitness -= 10  # "punish" if decrease a layer having less than X nodes
+            elif layer_action == 1:  # increase 1 layer
+                n_hidden_node_tmp.insert(layer_position, n_hidden_unit)
 
-        if node_action == -1:
-            if (n_hidden_node_tmp[node_position] - node_number) > 0:  # decrease X node(s) at layer L
-                n_hidden_node_tmp[node_position] -= node_number
-            else:
-                genome.fitness -= 20  # "punish" if this action is decided on a 1-layer NN
-        elif node_action == 1:  # increase X node(s) at layer L
-            n_hidden_node_tmp[node_position] += node_number
+            node_position = ceil(output[4] * len(n_hidden_node_tmp)) - 1  # decide which layer after the layer action
+            if node_position == -1: node_position = 0
 
-        if circuit_action == -1:
-            if n_circuit_tmp > 1:
-                n_circuit_tmp -= 1
-            else:
-                genome.fitness -= 10  # "punish" if the current number of circuit is 1
-        elif circuit_action == 1:
-            if n_circuit_tmp + 1 <= n_hidden_node_tmp[-1]: n_circuit_tmp += 1
-        if n_circuit_tmp > n_hidden_node_tmp[-1]: n_circuit_tmp = n_hidden_node_tmp[-1]
+            if node_action == -1:
+                if (n_hidden_node_tmp[node_position] - node_number) > 0:  # decrease X node(s) at layer L
+                    n_hidden_node_tmp[node_position] -= node_number
+                    # else:
+                    #     genome.fitness -= 20  # "punish" if this action is decided on a 1-layer NN
+            elif node_action == 1:  # increase X node(s) at layer L
+                n_hidden_node_tmp[node_position] += node_number
 
-        stretch_error = 0
-        for i in range(n_stretch):
-            stretch_error += min(eval(n_hidden_node_tmp, n_circuit_tmp))
-        stretch_error /= n_stretch
-        genome.fitness -= stretch_error * 100
-        print('Old: {}\tNew: {}\tCircuit: {}\t\t\t\t\t Signals: {} {} {} {} {} {}\t\t\tFitness: {}'
-              .format(n_hidden_node, n_hidden_node_tmp, n_circuit_tmp, layer_action, layer_position, node_action,
-                      node_number, node_position, circuit_action, genome.fitness))
+            if circuit_action == -1:
+                if n_circuit_tmp > 1:
+                    n_circuit_tmp -= 1
+                    # else:
+                    #     genome.fitness -= 10  # "punish" if the current number of circuit is 1
+            elif circuit_action == 1:
+                if n_circuit_tmp + 1 <= n_hidden_node_tmp[-1]: n_circuit_tmp += 1
+                if n_circuit_tmp > min(n_hidden_node_tmp): n_circuit_tmp = min(n_hidden_node_tmp)
+
+            stretch_error = 0
+            for i in range(n_stretch):
+                stretch_error += eval(n_hidden_node_tmp, n_circuit_tmp)[-1]
+            stretch_error /= n_stretch
+            average_error += (stretch_error - valid_error[-1])
+
+            print('Old: {}\tNew: {}\tCircuit: {}\t\t\t\t\t Signals: {} {} {} {} {} {}\t\t\tDelta error: {}'
+                  .format(n_hidden_node[target_index], n_hidden_node_tmp, n_circuit_tmp, layer_action, layer_position, node_action,
+                          node_number, node_position, circuit_action, (stretch_error - valid_error[-1])*100))
+
+        genome.fitness -= (average_error * 100 / n_target_ANN)
+        print('Fitness: {}\n'.format(genome.fitness))
         if best_fitness < genome.fitness:
             best_decision = [layer_action, layer_position, node_action, node_number, node_position, circuit_action]
             best_fitness = genome.fitness
             best_hidden_node = list(n_hidden_node_tmp)
             best_circuit = n_circuit_tmp
 
-    n_hidden_node = list(best_hidden_node)
-    n_circuit = best_circuit
+    # Lemarkism
+    # n_hidden_node = list(best_hidden_node)
+    # n_circuit = best_circuit
     print('\n===================SET OF SIGNALS [L] [Lpo] [N] [Nnum] [Npo] [C]: {}'
           .format(best_decision))
-    print('New topology: {}\tNumber of circuit: {}'.format(best_hidden_node, best_circuit))
     f = open('Result_breastcancer.txt', 'a')
-    f.write('{} {} {} {}\n'.format(len(best_hidden_node), sum(best_hidden_node), best_circuit, best_fitness*100))
+    f.write('{} {} {} {}\n'.format(len(best_hidden_node), sum(best_hidden_node), best_circuit, best_fitness))
 
     g = open('Result_for_visualize.txt', 'a')
-    g.write('{}\n'.format(best_fitness*100))
+    g.write('{}\n'.format(best_fitness))
 
 
 def display(winner, config):
@@ -165,7 +190,7 @@ def run(config_file):
     p.add_reporter(neat.Checkpointer(5))
 
     # Run for up to x generations.
-    winner = p.run(eval_genomes, 1000)
+    winner = p.run(eval_genomes, 100)
 
     # Save the model the pickle file
     joblib.dump(winner, "EANN_model.pkl")
@@ -188,12 +213,12 @@ def cont(config_file):
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                          neat.DefaultSpeciesSet, neat.DefaultStagnation,
                          config_file)
-    p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-1151')
+    p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-1248')
     p.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
     p.add_reporter(neat.Checkpointer(20))
-    winner = p.run(eval_genomes, 100)
+    winner = p.run(eval_genomes, 1000)
 
     # Save the model the pickle file
     joblib.dump(winner, "EANN_model.pkl")
@@ -206,7 +231,7 @@ def cont(config_file):
 
 
 def load(config_file):
-    n_hidden_node_tmp = [9,9,9]
+    n_hidden_node_tmp = [9, 9, 9]
     n_circuit_tmp = 1
 
     print('Initial topology: {} {}'.format(n_hidden_node_tmp, n_circuit_tmp))
@@ -265,7 +290,7 @@ if __name__ == '__main__':
     # current working directory.
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, 'config-MLP')
-    cont(config_path)
+    run(config_path)
     # valid1 = 0
     # valid2 = 0
     # for i in range(10):
@@ -277,3 +302,4 @@ if __name__ == '__main__':
     # valid1 /= 10
     # valid2 /= 10
     # print('Result: {}% {}%\nDifference: {}%'.format(valid1*100, valid2*100, abs(valid1-valid2)*100))
+    # eval([11, 6, 5], 2)
