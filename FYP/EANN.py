@@ -18,7 +18,7 @@ import visualize
 from FYP.model import evaluate
 
 # Parameters for target ANN.
-dataset = 'breastcancer.data'
+dataset = 'winequality.data'
 n_in = 9
 n_circuit = 1
 n_hidden_node = []
@@ -28,8 +28,8 @@ n_epochs = 100
 sparsity = 3
 varied_coef = 1
 learning_rate = 0.01
-momentum = 0.4
-batch_size = 27
+momentum = 0.1
+batch_size = 40
 probability = [0.1,
                0.2,
                0.3,
@@ -66,22 +66,27 @@ def eval_genomes(genomes, config):
 
     # Init variables and dependencies
     best_fitness = 0.0
+    n_hidden_node = []
+    n_circuit = []
+    valid_errors = []
     for target_index in range(n_target_ANN):
         n_hidden_node.append([])
         n_layer = random.randint(1, threshold_layer)
         for layer in range(n_layer):
             n_hidden_node[target_index].append(random.randint(threshold_node_lower, threshold_node_upper))
+        n_circuit.append(random.randint(1, threshold_circuit))
+        valid_errors.append(eval(n_hidden_node[target_index], n_circuit[target_index]))
 
-    average_error = 0
     for genome_id, genome in genomes:
-        genome.fitness = 80.0
+        average_error = 0
+        genome.fitness = 0.0
         for target_index in range(n_target_ANN):
             n_hidden_node_tmp = list(n_hidden_node[target_index])
-            n_circuit_tmp = random.randint(1, threshold_circuit)
+            valid_error = list(valid_errors[target_index])
+            n_circuit_tmp = n_circuit[target_index]
             if n_circuit_tmp > min(n_hidden_node_tmp):
                 n_circuit_tmp = min(n_hidden_node_tmp)
 
-            valid_error = eval(n_hidden_node_tmp, n_circuit_tmp)
             net = neat.nn.FeedForwardNetwork.create(genome, config)
             xi = tuple(valid_error) + (len(n_hidden_node_tmp),) + (sum(n_hidden_node_tmp),) + (n_circuit_tmp,)
             output = net.activate(xi)
@@ -130,15 +135,15 @@ def eval_genomes(genomes, config):
 
             stretch_error = 0
             for i in range(n_stretch):
-                stretch_error += eval(n_hidden_node_tmp, n_circuit_tmp)[-1]
+                stretch_error += min(eval(n_hidden_node_tmp, n_circuit_tmp))
             stretch_error /= n_stretch
-            average_error += (stretch_error - valid_error[-1])
+            average_error += (stretch_error - min(valid_error))
 
             print('Old: {}\tNew: {}\tCircuit: {}\t\t\t\t\t Signals: {} {} {} {} {} {}\t\t\tDelta error: {}'
                   .format(n_hidden_node[target_index], n_hidden_node_tmp, n_circuit_tmp, layer_action, layer_position, node_action,
-                          node_number, node_position, circuit_action, (stretch_error - valid_error[-1])*100))
+                          node_number, node_position, circuit_action, (stretch_error - min(valid_error))*100))
 
-        genome.fitness -= (average_error * 100 / n_target_ANN)
+        genome.fitness += (average_error * 100 / n_target_ANN)
         print('Fitness: {}\n'.format(genome.fitness))
         if best_fitness < genome.fitness:
             best_decision = [layer_action, layer_position, node_action, node_number, node_position, circuit_action]
@@ -190,7 +195,7 @@ def run(config_file):
     p.add_reporter(neat.Checkpointer(5))
 
     # Run for up to x generations.
-    winner = p.run(eval_genomes, 100)
+    winner = p.run(eval_genomes, 200)
 
     # Save the model the pickle file
     joblib.dump(winner, "EANN_model.pkl")
@@ -302,4 +307,4 @@ if __name__ == '__main__':
     # valid1 /= 10
     # valid2 /= 10
     # print('Result: {}% {}%\nDifference: {}%'.format(valid1*100, valid2*100, abs(valid1-valid2)*100))
-    # eval([11, 6, 5], 2)
+    # eval([20,20], 1)
