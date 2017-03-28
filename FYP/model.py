@@ -233,11 +233,11 @@ def evaluate(dataset,
     # Initialize network
     classifier = Model(
         input=x,
-        n_in=4,
+        n_in=11,
         n_hidden_layer=len(n_hidden_node),
         n_hidden_node=n_hidden_node,
         n_circuit=n_circuit,
-        n_out=3,
+        n_out=6,
         train=train,
         mask=mask,
         drop_type=drop_type,
@@ -375,10 +375,11 @@ def evaluate(dataset,
             best_validation_loss = this_valid_loss
             best_iter = iter
             # print(
-            #     'epoch %i, test error of best model %f %%' %
+            #     'epoch %i, test error of best model %f %%, validation error %f %%' %
             #     (
             #         epoch,
-            #         this_test_loss * 100.)
+            #         this_test_loss * 100.,
+            #         this_valid_loss * 100.)
             # )
 
     end_time = timeit.default_timer()
