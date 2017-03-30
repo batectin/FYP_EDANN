@@ -180,7 +180,7 @@ def evaluate(dataset,
              n_hidden_node, n_circuit,
              learning_rate, n_epochs, momentum, batch_size,
              drop_type, probability,
-             sparsity, varied_coef
+             sparsity, varied_coef, n_in, n_out
              ):
     """
     :param dataset          : name of dataset
@@ -233,11 +233,11 @@ def evaluate(dataset,
     # Initialize network
     classifier = Model(
         input=x,
-        n_in=11,
+        n_in=n_in,
         n_hidden_layer=len(n_hidden_node),
         n_hidden_node=n_hidden_node,
         n_circuit=n_circuit,
-        n_out=6,
+        n_out=n_out,
         train=train,
         mask=mask,
         drop_type=drop_type,

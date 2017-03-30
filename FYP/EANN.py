@@ -18,7 +18,10 @@ import visualize
 from FYP.model import evaluate
 
 # Parameters for target ANN.
-dataset = 'winequality.data'
+dataset = ['winequality.data', 'breastcancer.data', 'iris.data', 'car.data', 'g_credit.csv',
+           'balance-scale.csv', 'segment.csv', 'diabetes.csv']
+dataset_inout = [(11, 6), (9, 2), (4, 3), (6, 4), (24, 2), (4, 3), (19, 7), (8, 2)]
+batch_size = [40, 10, 10, 30, 10, 40, 10, 10]
 n_in = 9
 n_circuit = 1
 n_hidden_node = []
@@ -27,9 +30,8 @@ drop_type = 3
 n_epochs = 100
 sparsity = 3
 varied_coef = 1
-learning_rate = 0.01
+learning_rate = [0.01, 0.01, 0.01, 0.01, 0.005, 0.01, 0.01, 0.01]
 momentum = 0.1
-batch_size = 40
 probability = [0.1,
                0.2,
                0.3,
@@ -43,21 +45,23 @@ probability = [0.1,
 # Parameters for developmental ANN
 n_hidden_unit = 2 * (n_in + n_out) // 3
 max_added_node = 3
-n_stretch = 2
+n_stretch = 1
 n_target_ANN = 5
-threshold_layer = 4
+threshold_layer = 3
 threshold_node_upper = 15
 threshold_node_lower = 3
-threshold_circuit = 3
+threshold_circuit = 2
 
 
-def eval(hidden_unit, hidden_circuit):
+def eval(hidden_unit, hidden_circuit, index):
+    n_in, n_out = dataset_inout[index]
     return evaluate(n_hidden_node=hidden_unit, n_circuit=hidden_circuit,
-                    learning_rate=learning_rate, n_epochs=n_epochs, momentum=momentum, batch_size=batch_size,
-                    dataset=dataset,
+                    learning_rate=learning_rate[index], n_epochs=n_epochs, momentum=momentum,
+                    batch_size=batch_size[index],
+                    dataset=dataset[index],
                     drop_type=drop_type, probability=probability[0],
-                    sparsity=sparsity, varied_coef=varied_coef
-                    )
+                    sparsity=sparsity, varied_coef=varied_coef,
+                    n_in=n_in, n_out=n_out)
 
 
 def eval_genomes(genomes, config):
@@ -65,17 +69,19 @@ def eval_genomes(genomes, config):
     global n_circuit
 
     # Init variables and dependencies
-    best_fitness = 0.0
+    best_fitness = -100.0
     n_hidden_node = []
     n_circuit = []
     valid_errors = []
+    index = []
     for target_index in range(n_target_ANN):
         n_hidden_node.append([])
         n_layer = random.randint(1, threshold_layer)
         for layer in range(n_layer):
             n_hidden_node[target_index].append(random.randint(threshold_node_lower, threshold_node_upper))
         n_circuit.append(random.randint(1, threshold_circuit))
-        valid_errors.append(eval(n_hidden_node[target_index], n_circuit[target_index]))
+        index.append(random.randint(0, len(dataset) - 1))
+        valid_errors.append(eval(n_hidden_node[target_index], n_circuit[target_index], index[target_index]))
 
     for genome_id, genome in genomes:
         average_error = 0
@@ -135,13 +141,14 @@ def eval_genomes(genomes, config):
 
             stretch_error = 0
             for i in range(n_stretch):
-                stretch_error += min(eval(n_hidden_node_tmp, n_circuit_tmp))
+                stretch_error += min(eval(n_hidden_node_tmp, n_circuit_tmp, index[target_index]))
             stretch_error /= n_stretch
             average_error += (stretch_error - min(valid_error))
-
-            print('Old: {}\tNew: {}\tCircuit: {}\t\t\t\t\t Signals: {} {} {} {} {} {}\t\t\tDelta error: {}'
-                  .format(n_hidden_node[target_index], n_hidden_node_tmp, n_circuit_tmp, layer_action, layer_position, node_action,
-                          node_number, node_position, circuit_action, (stretch_error - min(valid_error))*100))
+            print('Old: {}\tNew: {}\tCircuit: {}\t\t\t\t\t Signals: {} {} {} {} {} {}\t\t\tDelta error: {}\tDataset: {}'
+                  .format(n_hidden_node[target_index], n_hidden_node_tmp, n_circuit_tmp, layer_action, layer_position,
+                          node_action,
+                          node_number, node_position, circuit_action, (stretch_error - min(valid_error)) * 100,
+                          dataset[index[target_index]]))
 
         genome.fitness += (average_error * 100 / n_target_ANN)
         print('Fitness: {}\n'.format(genome.fitness))
@@ -218,12 +225,12 @@ def cont(config_file):
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                          neat.DefaultSpeciesSet, neat.DefaultStagnation,
                          config_file)
-    p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-1248')
+    p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-254')
     p.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
-    p.add_reporter(neat.Checkpointer(20))
-    winner = p.run(eval_genomes, 1000)
+    p.add_reporter(neat.Checkpointer(10))
+    winner = p.run(eval_genomes, 50)
 
     # Save the model the pickle file
     joblib.dump(winner, "EANN_model.pkl")
@@ -295,7 +302,7 @@ if __name__ == '__main__':
     # current working directory.
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, 'config-MLP')
-    run(config_path)
+    cont(config_path)
     # valid1 = 0
     # valid2 = 0
     # for i in range(10):
@@ -307,4 +314,4 @@ if __name__ == '__main__':
     # valid1 /= 10
     # valid2 /= 10
     # print('Result: {}% {}%\nDifference: {}%'.format(valid1*100, valid2*100, abs(valid1-valid2)*100))
-    # eval([20,20], 1)
+    # eval([8, 10], 1, 7)

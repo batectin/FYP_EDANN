@@ -98,6 +98,31 @@ def load_data(dataset):
         valid_set = f[1200:1400, 0:11], f[1200:1400, 11]
         test_set = f[1400:1600, 0:11], f[1400:1600, 11]
 
+    elif dataset == 'car.data':
+        train_set = f[0:1100, 0:6], f[0:1100, 6]
+        valid_set = f[1100:1414, 0:6], f[1100:1414, 6]
+        test_set = f[1414:1728, 0:6], f[1414:1728, 6]
+
+    elif dataset == 'g_credit.csv':
+        train_set = f[0:601, 0:24], f[0:601, 24]
+        valid_set = f[601:801, 0:24], f[601:801, 24]
+        test_set = f[801:1001, 0:24], f[801:1001, 24]
+
+    elif dataset == 'balance-scale.csv':
+        train_set = f[0:401, 0:4], f[0:401, 4]
+        valid_set = f[401:525, 0:4], f[401:525, 4]
+        test_set = f[525:626, 0:4], f[525:626, 4]
+
+    elif dataset == 'segment.csv':
+        train_set = f[0:501, 0:19], f[0:501, 19]
+        valid_set = f[501:651, 0:19], f[501:651, 19]
+        test_set = f[651:811, 0:19], f[651:811, 19]
+
+    elif dataset == 'diabetes.csv':
+        train_set = f[0:501, 0:8], f[0:501, 8]
+        valid_set = f[501:636, 0:8], f[501:636, 8]
+        test_set = f[636:769, 0:8], f[636:769, 8]
+
     def shared_dataset(data_xy, borrow=True):
         data_x, data_y = data_xy
         shared_x = theano.shared(numpy.asarray(data_x, dtype=theano.config.floatX), borrow=borrow)
