@@ -62,7 +62,7 @@ def load_data(dataset):
     # feature = numpy.genfromtxt(dataset, delimiter=',', dtype=theano.config.floatX, usecols=range(2, 11))
     # target = numpy.genfromtxt(dataset, delimiter=',', dtype=theano.config.floatX, usecols=1) - 1
     #
-    # scaler = preprocessing.MinMaxScaler()
+    scaler = preprocessing.MinMaxScaler()
     # feature = scaler.fit_transform(feature)
 
     # feature = preprocessing.normalize(feature)
@@ -70,6 +70,7 @@ def load_data(dataset):
     # numpy.random.shuffle(f)
 
     # For BREASTCANCER.data
+    dataset = dataset.split("/")[1]
     if dataset == 'breastcancer.data':
         train_set = f[0:449, 3:12], f[0:449, 2]
         valid_set = f[449:649, 3:12], f[449:649, 2]

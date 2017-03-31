@@ -23,8 +23,8 @@ dataset = ['winequality.data', 'breastcancer.data', 'iris.data', 'car.data', 'g_
 dataset_inout = [(11, 6), (9, 2), (4, 3), (6, 4), (24, 2), (4, 3), (19, 7), (8, 2)]
 batch_size = [40, 10, 10, 30, 10, 40, 10, 10]
 n_in = 9
-n_circuit = 1
-n_hidden_node = []
+# n_circuit = 1
+# n_hidden_node = []
 n_out = 2
 drop_type = 3
 n_epochs = 100
@@ -46,22 +46,39 @@ probability = [0.1,
 n_hidden_unit = 2 * (n_in + n_out) // 3
 max_added_node = 3
 n_stretch = 1
-n_target_ANN = 5
+n_target_ANN = 6
 threshold_layer = 3
 threshold_node_upper = 15
 threshold_node_lower = 3
 threshold_circuit = 2
-
 
 def eval(hidden_unit, hidden_circuit, index):
     n_in, n_out = dataset_inout[index]
     return evaluate(n_hidden_node=hidden_unit, n_circuit=hidden_circuit,
                     learning_rate=learning_rate[index], n_epochs=n_epochs, momentum=momentum,
                     batch_size=batch_size[index],
-                    dataset=dataset[index],
+                    dataset='Dataset/'+dataset[index],
                     drop_type=drop_type, probability=probability[0],
                     sparsity=sparsity, varied_coef=varied_coef,
                     n_in=n_in, n_out=n_out)
+
+n_hidden_node = []
+n_circuit = []
+valid_errors = []
+index = []
+for target_index in range(n_target_ANN):
+    n_hidden_node.append([])
+    n_layer = random.randint(1, threshold_layer)
+    for layer in range(n_layer):
+        n_hidden_node[target_index].append(random.randint(threshold_node_lower, threshold_node_upper))
+    n_circuit.append(random.randint(1, threshold_circuit))
+    index.append(random.randint(0, len(dataset) - 1))
+    valid_errors.append(eval(n_hidden_node[target_index], n_circuit[target_index], index[target_index]))
+
+n_hidden_node.append([])
+n_circuit.append(0)
+index.append(0)
+valid_errors.append([])
 
 
 def eval_genomes(genomes, config):
@@ -70,23 +87,20 @@ def eval_genomes(genomes, config):
 
     # Init variables and dependencies
     best_fitness = -100.0
-    n_hidden_node = []
-    n_circuit = []
-    valid_errors = []
-    index = []
-    for target_index in range(n_target_ANN):
-        n_hidden_node.append([])
-        n_layer = random.randint(1, threshold_layer)
-        for layer in range(n_layer):
-            n_hidden_node[target_index].append(random.randint(threshold_node_lower, threshold_node_upper))
-        n_circuit.append(random.randint(1, threshold_circuit))
-        index.append(random.randint(0, len(dataset) - 1))
-        valid_errors.append(eval(n_hidden_node[target_index], n_circuit[target_index], index[target_index]))
+    target_index = n_target_ANN - 1
+    n_layer = random.randint(1, threshold_layer)
+    n_hidden_node[target_index] = []
+    for layer in range(n_layer):
+        n_hidden_node[target_index].append(random.randint(threshold_node_lower, threshold_node_upper))
+    n_circuit[target_index] = random.randint(1, threshold_circuit)
+    index[target_index] = random.randint(0, len(dataset) - 1)
+    valid_errors[target_index] = eval(n_hidden_node[target_index], n_circuit[target_index], index[target_index])
 
     for genome_id, genome in genomes:
         average_error = 0
         genome.fitness = 0.0
         for target_index in range(n_target_ANN):
+            best_stretch_error = 100
             n_hidden_node_tmp = list(n_hidden_node[target_index])
             valid_error = list(valid_errors[target_index])
             n_circuit_tmp = n_circuit[target_index]
@@ -144,6 +158,8 @@ def eval_genomes(genomes, config):
                 stretch_error += min(eval(n_hidden_node_tmp, n_circuit_tmp, index[target_index]))
             stretch_error /= n_stretch
             average_error += (stretch_error - min(valid_error))
+            if best_stretch_error > stretch_error:
+                decision = [layer_action, layer_position, node_action, node_number, node_position, circuit_action]
             print('Old: {}\tNew: {}\tCircuit: {}\t\t\t\t\t Signals: {} {} {} {} {} {}\t\t\tDelta error: {}\tDataset: {}'
                   .format(n_hidden_node[target_index], n_hidden_node_tmp, n_circuit_tmp, layer_action, layer_position,
                           node_action,
@@ -153,10 +169,11 @@ def eval_genomes(genomes, config):
         genome.fitness += (average_error * 100 / n_target_ANN)
         print('Fitness: {}\n'.format(genome.fitness))
         if best_fitness < genome.fitness:
-            best_decision = [layer_action, layer_position, node_action, node_number, node_position, circuit_action]
+            best_decision = decision
             best_fitness = genome.fitness
             best_hidden_node = list(n_hidden_node_tmp)
             best_circuit = n_circuit_tmp
+        genome.decision = decision
 
     # Lemarkism
     # n_hidden_node = list(best_hidden_node)
@@ -167,7 +184,7 @@ def eval_genomes(genomes, config):
     f.write('{} {} {} {}\n'.format(len(best_hidden_node), sum(best_hidden_node), best_circuit, best_fitness))
 
     g = open('Result_for_visualize.txt', 'a')
-    g.write('{}\n'.format(best_fitness))
+    g.write('{}\n'.format(best_decision))
 
 
 def display(winner, config):
@@ -225,7 +242,7 @@ def cont(config_file):
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                          neat.DefaultSpeciesSet, neat.DefaultStagnation,
                          config_file)
-    p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-254')
+    p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-248')
     p.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
@@ -314,4 +331,4 @@ if __name__ == '__main__':
     # valid1 /= 10
     # valid2 /= 10
     # print('Result: {}% {}%\nDifference: {}%'.format(valid1*100, valid2*100, abs(valid1-valid2)*100))
-    # eval([8, 10], 1, 7)
+    # eval([8, 10], 1, 0)
